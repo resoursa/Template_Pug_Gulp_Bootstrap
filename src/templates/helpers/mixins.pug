@@ -1,0 +1,41 @@
+//- Top Level Menu Item
+mixin menu-link(url, title)
+  - var linkattr = isNestedFile ? {'href': '../' + url} : {'href': url}
+  a()&attributes(linkattr)
+    span= title
+
+//- Sub Menu Item
+mixin submenu-item(url, title, extraClass)
+  - var linkAttr = isNestedFile ? {'href': '../' + url} : {'href': url}
+  - var activeClass = (pageTitle === title) ? 'active' : ''
+  li()&attributes({'class': [extraClass, activeClass]})
+    a()&attributes(linkAttr)= title
+
+//- Rating Stars
+mixin rating-stars(stars)
+  .rating-stars
+    each star in stars
+      - var starClass = {'class': star.class}
+      i()&attributes(starClass)
+
+//- Social Buttons
+mixin social-buttons(socials, shape, skin)
+  each social in socials
+    - var linkAttrs = {'href': social.link, 'class': ['social-button',  'sb-' + social.icon, 'shape-' + shape, 'sb-' + skin], 'target': '_blank'}
+    a()&attributes(linkAttrs)
+      i()&attributes({'class': ['socicon-' + social.icon]})
+
+//- Side Menu
+mixin side-menu(items, isActive)
+  .menu-side-menu-container
+    ul.menu
+        each item in items
+          - var activeClass = (isActive === item.title) ? 'current-menu-item' : ''
+          - var linkAttrs = {'href': item.link}
+          li()&attributes({'class': ['menu-item', activeClass]})
+            a()&attributes(linkAttrs)= item.title
+
+//- Link TO...
+mixin just-link(url)
+  - var justLinkattr = isNestedFile ? {'href': '../' + url} : {'href': url}
+  a()&attributes(justLinkattr)

@@ -1,0 +1,26 @@
+//- Include config.pug file that holds all variables
+block config
+  include ../helpers/config
+
+//- Mixins - reusable code snippets
+include ../helpers/mixins
+
+
+doctype html
+html(lang="en")
+
+  //- head.pug template
+  include head
+  
+  // Body
+  body
+    include header
+
+    main
+      block content
+
+    include footer
+    
+    // JavaScript (jQuery) libraries, plugins and custom scripts
+    script()&attributes(src='js/vendor.min.js')
+    script()&attributes(src='js/scripts.min.js')
