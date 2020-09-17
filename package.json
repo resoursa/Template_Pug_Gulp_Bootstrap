@@ -1,14 +1,17 @@
 {
-  "name": "laserGulf",
+  "name": "basic-pug-scss-template",
   "version": "1.0.0",
-  "description": "laserGulf",
+  "description": "Basic Scss Pug Template",
+  "repository": {
+    "url": "https://github.com/resoursa/Template_Pug_Gulp_Bootstrap"
+  },
   "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "rokaux.com",
+  "author": "Resoursa",
   "license": "ISC",
-  "homepage": "",
+  "homepage": "https://github.com/resoursa",
   "devDependencies": {
     "browser-sync": "^2.26.7",
     "del": "^3.0.0",
