@@ -1,50 +1,42 @@
-let gulp = require('gulp'),
-    gulpif = require('gulp-if'),
-    del = require('del'),
-    rename = require('gulp-rename'),
-    sass = require('gulp-sass'),
-    pug = require('gulp-pug'),
-    autoprefixer = require('gulp-autoprefixer'),
-    sourcemaps = require('gulp-sourcemaps'),
-    emitty = require('emitty').setup('src/templates', 'pug'),
-    browserSync = require('browser-sync').create(),
-    reload = browserSync.reload,
-    concat = require('gulp-concat'),
-    uglify = require('gulp-uglify-es').default;
+const gulp = require('gulp'),
+      gulpif = require('gulp-if'),
+      del = require('del'),
+      rename = require('gulp-rename'),
+      gulpSass = require('gulp-sass')(require('sass'));
+      sass = require('sass');
+      pug = require('gulp-pug'),
+      autoprefixer = require('gulp-autoprefixer'),
+      sourcemaps = require('gulp-sourcemaps'),
+      emitty = require('emitty').setup('src/templates', 'pug'),
+      browserSync = require('browser-sync').create(),
+      reload = browserSync.reload,
+      concat = require('gulp-concat'),
+      babel = require('gulp-babel'),
+      uglify = require('gulp-uglify'),
+      imagemin = require('gulp-imagemin'),
+      package = require('./package.json');
 
 
 // Define reusable paths
-var path = {
+
+const path = {
   src: 'src',
   dist: 'dist',
   src_pug: 'src/templates',
   src_scss: 'src/scss',
   src_js: 'src/js',
+  src_fonts: 'src/fonts',
+  dist_vendor: 'dist/vendor',
   src_js_vendor: 'src/vendor/js',
   src_css_vendor: 'src/vendor/css',
-  src_bootstrap_vendor: 'src/vendor/bootstrap',
+  dist_fonts: 'dist/fonts',
   dist_js: 'dist/js',
   dist_css: 'dist/css',
+  root_package: 'package.json'
 }
 
 
 // Sass compiling
-
-// Bootsrap
-gulp.task('sass:bootstrap', () => {
-  const options = {
-    outputStyle: 'compressed',
-    precision: 10 // rounding of css color values, etc..
-  };
-  return gulp.src(path.src_bootstrap_vendor + '/bootstrap.scss')
-    .pipe(sass(options).on('error', sass.logError))
-    .pipe(autoprefixer({
-      browsers: ['last 2 versions', 'ie 10', 'ie 11'],
-      cascade: false
-    }))
-    .pipe(rename({ suffix: '.min'}))
-    .pipe(gulp.dest(path.src_css_vendor));
-});
 
 // Expanded
 gulp.task('sass:expanded', () => {
@@ -52,10 +44,9 @@ gulp.task('sass:expanded', () => {
     outputStyle: 'expanded',
     precision: 10 // rounding of css color values, etc..
   };
-  return gulp.src(path.src_scss + '/styles.scss')
-    .pipe(sass(options).on('error', sass.logError))
+  return gulp.src(path.src_scss + '/theme.scss')
+    .pipe(gulpSass(options).on('error', gulpSass.logError))
     .pipe(autoprefixer({
-      browsers: ['last 2 versions', 'ie 10', 'ie 11'],
       cascade: false
     }))
     .pipe(gulp.dest(path.dist_css))
@@ -68,17 +59,32 @@ gulp.task('sass:minified', () => {
     outputStyle: 'compressed',
     precision: 10 // rounding of css color values, etc..
   };
-  return gulp.src(path.src_scss + '/styles.scss')
+  return gulp.src(path.src_scss + '/theme.scss')
     .pipe(sourcemaps.init())
-    .pipe(sass(options).on('error', sass.logError))
+    .pipe(gulpSass(options).on('error', gulpSass.logError))
     .pipe(autoprefixer({
-      browsers: ['last 2 versions', 'ie 10', 'ie 11'],
       cascade: false
     }))
     .pipe(rename({ suffix: '.min'}))
     .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(path.dist_css))
     .pipe(browserSync.stream()); // Inject css into browser
+});
+
+
+// Main theme js file compilation and minification
+
+gulp.task('js', () => {
+  return gulp.src(path.src_js + '/theme.js')
+    .pipe(rename('theme.min.js'))
+    .pipe(babel({
+      presets: ['@babel/env']
+    }))
+    // .pipe(uglify())
+    .pipe(gulp.dest(path.dist_js))
+    .on('end', () => {
+      reload(); // One time browser reload at end of uglification (minification)
+    });
 });
 
 
@@ -92,11 +98,11 @@ gulp.task('pug', () =>
   new Promise((resolve, reject) => {
     const sourceOptions = {
       cwd: path.src_pug,
-      base: path.src_pug // This causes the components and docs subfolders to be mirrored on dest
+      base: path.src_pug // This causes the components and docs subfolders to be mirrored in dist folder
     };
 
     emitty.scan(global.emittyChangedFile).then(() => {
-      gulp.src(['*.pug', 'components/*pug', 'docs/*.pug'], sourceOptions)
+      gulp.src(['*.pug'], sourceOptions)
         .pipe(gulpif(global.watch, emitty.filter(global.emittyChangedFile)))
         .pipe(pug({ pretty: true }))
         .pipe(gulp.dest(path.dist))
@@ -109,26 +115,10 @@ gulp.task('pug', () =>
   })
 );
 
-
-// Start BrowserSync server for autorefresh / syncing
-
-gulp.task('browsersync', () => {
-  browserSync.init({
-    server: {
-      baseDir: path.dist
-    },
-    browser: '',
-    open: true, // or "local"
-    notify: false
-  });
-});
-
-
 // Concatinate various vendor css files
 
 gulp.task('concat:css', () => {
   return gulp.src([
-    path.src_css_vendor + '/bootstrap.min.css',
     path.src_css_vendor + '/*.css'
   ])
     .pipe(concat('vendor.min.css'))
@@ -141,10 +131,9 @@ gulp.task('concat:css', () => {
 
 gulp.task('concat:js', () => {
   return gulp.src([
-      path.src_js_vendor + '/jquery-3.1.0.min.js',
-      path.src_js_vendor + '/*.js',
-      '!' + path.src_js_vendor + '/modernizr-custom.js'
-    ])
+    path.src_js_vendor + '/*.js',
+    '!' + path.src_js_vendor + '/jquery.slim.min.js',
+  ])
     .pipe(concat('vendor.min.js'))
     .pipe(gulp.dest(path.dist_js))
     .on('end', () => {
@@ -152,28 +141,53 @@ gulp.task('concat:js', () => {
     });
 });
 
+// Move some vendor css files to dist/css folder
+
+// gulp.task('move:css', () => {
+//   return gulp.src([
+//     path.src_css_vendor + '/chartist.min.css',
+//     path.src_css_vendor + '/prism.min.css'
+//   ])
+//     .pipe(gulp.dest(path.dist_css));
+// });
+
 
 // Move some vendor js files to dist/js folder
 
 gulp.task('move:js', () => {
   return gulp.src([
-      path.src_js_vendor + '/modernizr-custom.js'
-    ])
+    path.src_js_vendor + '/jquery.slim.min.js'
+  ])
     .pipe(gulp.dest(path.dist_js));
 });
 
+gulp.task('exports', () => {
+  return gulp.src(path.src + '/img/**/*')
+    .pipe(imagemin())
+    .pipe(gulp.dest(path.dist + '/img'))
+});
 
-// Uglify (minify) our own scripts.js file
+gulp.task('vendor:clean', () => {
+  return del(path.dist_vendor);
+});
+
+// Uglify (minify) + polyfill (Babel) theme core scripts.js file
 
 gulp.task('uglify:js', () => {
-  return gulp.src(path.src_js + '/scripts.js')
-    .pipe(rename('scripts.min.js'))
-    .pipe(uglify())
+  return gulp.src(path.src_js + '/theme.js')
+    .pipe(rename('theme.min.js'))
+    .pipe(babel({
+      presets: ['@babel/env']
+    }))
+    // .pipe(uglify())
     .pipe(gulp.dest(path.dist_js))
     .on('end', () => {
       reload(); // One time browser reload at end of uglification (minification)
     });
 });
+
+
+// gulp.task('vendor', gulp.series('vendor:clean', 'vendor:move'));
 
 
 // Clean certain files/folders from dist directory. Runs before compilation of new files. See 'default' task at the most bottom of this file
@@ -182,9 +196,7 @@ gulp.task('clean', () => {
   return del([
     path.dist_css,
     path.dist_js,
-    path.dist + '/components'
-    // path.dist + '/docs',
-    // path.dist + '/*.html'
+    path.dist + '/*.html'
   ]);
 });
 
@@ -193,20 +205,27 @@ gulp.task('clean', () => {
 
 gulp.task('watch', () => {
   global.watch = true; // Let the pug task know that we are running in "watch" mode
+
+  // BrowserSync
+  browserSync.init({
+    server: {
+      baseDir: path.dist,
+    },
+    open: true, // or "local"
+  });
   gulp.watch(path.src_pug + '/**/*.pug', gulp.series('pug'))
     .on('all', (event, filepath) => {
       global.emittyChangedFile = filepath;
     });
-  gulp.watch(path.src_css_vendor + '/*.css', gulp.series('concat:css'));
-  gulp.watch(path.src_scss + '/**/*.scss', gulp.series('sass:minified', 'sass:expanded'));
-  gulp.watch(path.src_js_vendor + '/*.js', gulp.series('concat:js'));
-  gulp.watch(path.src_js + '/*.js', gulp.series('uglify:js'));
+    gulp.watch(path.src_scss + '/**/*.scss', gulp.series('sass:minified', 'sass:expanded'));
+    gulp.watch(path.src_js + '/*.js', gulp.series('js'));
+    gulp.watch(path.src + '/img/*', gulp.series('exports'));
 });
 
 
-// Default task - the dependent tasks will run in parallell
+// Default task - the dependent tasks will run in parallell / excluding Docs and Components compilation
 
 gulp.task(
   'default',
-  gulp.series('clean', 'sass:bootstrap', gulp.parallel('concat:js', 'move:js', 'concat:css', 'uglify:js', 'pug', 'sass:minified', 'sass:expanded', 'watch', 'browsersync'))
+  gulp.series('clean', gulp.parallel('exports', 'concat:js', 'move:js', 'concat:css', 'uglify:js', 'pug', 'js', 'sass:minified', 'sass:expanded'), 'watch')
 );
